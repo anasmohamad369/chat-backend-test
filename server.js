@@ -13,8 +13,24 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// MongoDB setup
-mongoose.connect('mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0') // Use your MongoDB connection string
+// MongoDB setup with proper error handling
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
+mongoose.connect(MONGODB_URI)
+.then(() => console.log('Connected to MongoDB'))
+.catch((err) => {
+  console.error('MongoDB connection error:', err);
+  process.exit(1);
+});
+
+// Handle MongoDB connection errors
+mongoose.connection.on('error', (err) => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
 
 const messageSchema = new mongoose.Schema({
   username: String,
