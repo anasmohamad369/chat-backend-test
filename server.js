@@ -34,8 +34,19 @@ app.get('/health', (req, res) => {
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGODB_URI)
-.then(() => {
+.then(async () => {
   console.log('Connected to MongoDB');
+  console.log('MongoDB URI:', MONGODB_URI);
+  
+  // Verify connection and database
+  const db = mongoose.connection.db;
+  const collections = await db.listCollections().toArray();
+  console.log('Available collections:', collections.map(c => c.name));
+  
+  // Test query to verify data
+  const testMessages = await Message.find({}).limit(1);
+  console.log('Sample message from DB:', testMessages[0]);
+  
   updateExistingMessages();
 })
 .catch((err) => {
@@ -81,15 +92,18 @@ app.get('/messages', async (req, res) => {
   const { room } = req.query;
   console.log("Query room:", room);
   console.log("Request URL:", req.url);
-  console.log("Request headers:", req.headers);
 
   if (!room) return res.status(400).send("Room query is required");
 
   try {
-    // Only return messages for the specific room requested
-    const messages = await Message.find({ room: room });
+    // Strictly match the room value
+    const messages = await Message.find({ 
+      room: { $eq: room }  // Use $eq for strict equality
+    }).sort({ timestamp: 1 });  // Sort by timestamp ascending
+
     console.log(`Found ${messages.length} messages for room ${room}`);
-    console.log("First few messages:", messages.slice(0, 3).map(m => ({ room: m.room, text: m.text })));
+    console.log("Sample messages:", messages.slice(0, 3).map(m => ({ room: m.room, text: m.text })));
+    
     res.json(messages);
   } catch (error) {
     console.error("Error:", error);
@@ -115,6 +129,25 @@ app.get('/test-room', async (req, res) => {
   } catch (error) {
     console.error("Test endpoint error:", error);
     res.status(500).send("Test endpoint error");
+  }
+});
+
+// Add this before the /messages endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    const collections = await db.listCollections().toArray();
+    const stats = await db.stats();
+    
+    res.json({
+      database: db.databaseName,
+      collections: collections.map(c => c.name),
+      stats: stats,
+      connectionState: mongoose.connection.readyState
+    });
+  } catch (error) {
+    console.error('Test DB error:', error);
+    res.status(500).send('Test DB error');
   }
 });
 
