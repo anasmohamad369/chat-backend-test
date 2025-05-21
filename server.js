@@ -64,9 +64,13 @@ app.get('/messages', async (req, res) => {
   const { room } = req.query;
   if (!room) return res.status(400).send("Room query is required");
 
-  const messages = await Message.find({ room });
+  // Convert room to number before querying (only if room is stored as number)
+  const messages = await Message.find({ room: Number(room) });
+
   res.json(messages);
 });
+
+console.log("Filtering for room:", room);
 
 io.on('connection', (socket) => {
   console.log('User connected');
