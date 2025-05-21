@@ -34,7 +34,10 @@ app.get('/health', (req, res) => {
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
 
 mongoose.connect(MONGODB_URI)
-.then(() => console.log('Connected to MongoDB'))
+.then(() => {
+  console.log('Connected to MongoDB');
+  updateExistingMessages();
+})
 .catch((err) => {
   console.error('MongoDB connection error:', err);
   process.exit(1);
@@ -60,6 +63,18 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', messageSchema);
 
+// Add this after your Message model definition
+async function updateExistingMessages() {
+  try {
+    const result = await Message.updateMany(
+      { room: { $exists: false } },
+      { $set: { room: 'global' } }
+    );
+    console.log(`Updated ${result.modifiedCount} messages with default room`);
+  } catch (error) {
+    console.error('Error updating messages:', error);
+  }
+}
 
 // API to fetch message history
 app.get('/messages', async (req, res) => {
@@ -69,7 +84,13 @@ app.get('/messages', async (req, res) => {
   if (!room) return res.status(400).send("Room query is required");
 
   try {
-    const messages = await Message.find({ room });
+    // Find messages that either match the room or don't have a room field
+    const messages = await Message.find({
+      $or: [
+        { room: room },
+        { room: { $exists: false } }
+      ]
+    });
     console.log(`Found ${messages.length} messages for room ${room}`);
     res.json(messages);
   } catch (error) {
