@@ -51,25 +51,21 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat message', async ({ username, text, image, roomCode }) => {
-    try {
-      const room = roomCode || 'global';
-
-      // ✅ Create and save the message properly
-      const newMessage = new Message({ username, text, image, room });
-      await newMessage.save();
-
-      // ✅ Emit the message to everyone in the room
-      io.to(room).emit('chat message', {
-        username,
-        text,
-        image,
-        room,
-        timestamp: newMessage.timestamp,
-      });
-    } catch (err) {
-      console.error("Failed to save message:", err);
-    }
+    const room = roomCode || 'global';
+    console.log('Saving message to room:', room); // ✅ See which room this message is going to
+  
+    const newMessage = new Message({ username, text, image, room });
+    await newMessage.save();
+  
+    io.to(room).emit('chat message', {
+      username,
+      text,
+      image,
+      room,
+      timestamp: newMessage.timestamp,
+    });
   });
+  
 
   socket.on('disconnect', () => {
     console.log('User disconnected');
