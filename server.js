@@ -70,7 +70,6 @@ app.get('/messages', async (req, res) => {
   res.json(messages);
 });
 
-console.log("Filtering for room:", room);
 
 io.on('connection', (socket) => {
   console.log('User connected');
