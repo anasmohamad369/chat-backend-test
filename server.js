@@ -19,27 +19,37 @@ mongoose.connect('mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.
 const messageSchema = new mongoose.Schema({
   username: String,
   text: String,
+  image: String,
+  room: String,
   timestamp: { type: Date, default: Date.now },
 });
+
 
 const Message = mongoose.model('Message', messageSchema);
 
 // API to fetch message history
 app.get('/messages', async (req, res) => {
-  const messages = await Message.find().sort({ timestamp: 1 }).limit(100);
+  const room = req.query.room || 'global';
+  const messages = await Message.find({ room }).sort({ timestamp: 1 }).limit(100);
   res.json(messages);
 });
-
 io.on('connection', (socket) => {
   console.log('User connected');
 
-  socket.on('chat message', async (msg) => {
-    const { username, text } = msg;
-    const newMsg = new Message({ username, text });
-    await newMsg.save();
-
-    io.emit('chat message', newMsg);
+  socket.on('join room', (roomCode) => {
+    const room = roomCode || 'global'; // if no code, use global room
+    socket.join(room);
+    console.log(`User joined room: ${room}`);
   });
+
+  socket.on('chat message', async ({ username, text, image, roomCode }) => {
+    const room = roomCode || 'global';
+    const newMessage = new Message({ username, text, image });
+    await newMessage.save();
+  
+    io.to(room).emit('chat message', { username, text, image });
+  });
+  
 
   socket.on('disconnect', () => {
     console.log('User disconnected');

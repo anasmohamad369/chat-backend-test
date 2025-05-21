@@ -1,0 +1,25 @@
+# Environment files
+!.env
+.env.local
+.env.*.local
+.env.production
+# Include the example environment file in version control
+!.env.example
+
+# AWS Server keys
+ryzer-server-v2.pem
+ryzer-server-v2.key
+.ssh/*
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnp.*
+
+# Node
+node_modules/*
+dist/*
