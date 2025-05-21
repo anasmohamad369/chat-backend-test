@@ -69,7 +69,7 @@ app.get('/messages', async (req, res) => {
   if (!room) return res.status(400).send("Room query is required");
 
   try {
-    const messages = await Message.find({ room }); // OR use Number(room) if stored as number
+    const messages = await Message.find({ room });
     console.log(`Found ${messages.length} messages for room ${room}`);
     res.json(messages);
   } catch (error) {
@@ -125,3 +125,11 @@ const startServer = (port) => {
 }
 
 startServer(PORT)
+
+// Local
+// const socket = io("http://localhost:3001");
+
+// Deployed
+const socket = io("https://chat-backend-test-wbsa.onrender.com", {
+    transports: ["websocket"],
+});
