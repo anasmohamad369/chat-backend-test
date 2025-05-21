@@ -80,18 +80,16 @@ async function updateExistingMessages() {
 app.get('/messages', async (req, res) => {
   const { room } = req.query;
   console.log("Query room:", room);
+  console.log("Request URL:", req.url);
+  console.log("Request headers:", req.headers);
 
   if (!room) return res.status(400).send("Room query is required");
 
   try {
-    // Find messages that either match the room or don't have a room field
-    const messages = await Message.find({
-      $or: [
-        { room: room },
-        { room: { $exists: false } }
-      ]
-    });
+    // Only return messages for the specific room requested
+    const messages = await Message.find({ room: room });
     console.log(`Found ${messages.length} messages for room ${room}`);
+    console.log("First few messages:", messages.slice(0, 3).map(m => ({ room: m.room, text: m.text })));
     res.json(messages);
   } catch (error) {
     console.error("Error:", error);
@@ -99,7 +97,26 @@ app.get('/messages', async (req, res) => {
   }
 });
 
-
+// Add this before the /messages endpoint
+app.get('/test-room', async (req, res) => {
+  const { room } = req.query;
+  try {
+    // Test different queries
+    const exactMatch = await Message.find({ room: room });
+    const allMessages = await Message.find({});
+    
+    res.json({
+      requestedRoom: room,
+      exactMatchCount: exactMatch.length,
+      allMessagesCount: allMessages.length,
+      sampleExactMatch: exactMatch.slice(0, 3).map(m => ({ room: m.room, text: m.text })),
+      sampleAllMessages: allMessages.slice(0, 3).map(m => ({ room: m.room, text: m.text }))
+    });
+  } catch (error) {
+    console.error("Test endpoint error:", error);
+    res.status(500).send("Test endpoint error");
+  }
+});
 
 io.on('connection', (socket) => {
   console.log('User connected');
