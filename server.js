@@ -27,35 +27,68 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', messageSchema);
 
+
 // API to fetch message history
 app.get('/messages', async (req, res) => {
-  const room = req.query.room || 'global';
-  const messages = await Message.find({ room }).sort({ timestamp: 1 }).limit(100);
-  res.json(messages);
+  try {
+    const room = req.query.room || 'global';
+    const messages = await Message.find({ room }).sort({ timestamp: 1 }).limit(100);
+    res.json(messages);
+  } catch (err) {
+    console.error('Error fetching messages:', err);
+    res.status(500).json({ error: 'Could not fetch messages' });
+  }
 });
+
+
 io.on('connection', (socket) => {
   console.log('User connected');
 
   socket.on('join room', (roomCode) => {
-    const room = roomCode || 'global'; // if no code, use global room
+    const room = roomCode || 'global';
     socket.join(room);
     console.log(`User joined room: ${room}`);
   });
 
   socket.on('chat message', async ({ username, text, image, roomCode }) => {
-    const room = roomCode || 'global';
-    const newMessage = new Message({ username, text, image });
-    await newMessage.save();
-  
-    io.to(room).emit('chat message', { username, text, image });
+    try {
+      const room = roomCode || 'global';
+
+      // ✅ Create and save the message properly
+      const newMessage = new Message({ username, text, image, room });
+      await newMessage.save();
+
+      // ✅ Emit the message to everyone in the room
+      io.to(room).emit('chat message', {
+        username,
+        text,
+        image,
+        room,
+        timestamp: newMessage.timestamp,
+      });
+    } catch (err) {
+      console.error("Failed to save message:", err);
+    }
   });
-  
 
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
 });
 
-server.listen(3001, () => {
-  console.log('Server running on http://localhost:3001');
-});
+
+const PORT = process.env.PORT || 3001
+const startServer = (port) => {
+  server.listen(port, () => {
+    console.log(`Server running on port ${port}`)
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is busy, trying ${port + 1}...`)
+      startServer(port + 1)
+    } else {
+      console.error('Server error:', err)
+    }
+  })
+}
+
+startServer(PORT)
