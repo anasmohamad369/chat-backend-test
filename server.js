@@ -10,8 +10,10 @@ const io = new Server(server, {
   cors: { origin: '*' }
 });
 
-app.use(cors());
-app.use(express.json());
+app.use(cors({
+  origin: "*", // OR better: use your frontend URL like "https://yourfrontend.vercel.app"
+  methods: ["GET", "POST"]
+}));app.use(express.json());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -62,13 +64,20 @@ const Message = mongoose.model('Message', messageSchema);
 // API to fetch message history
 app.get('/messages', async (req, res) => {
   const { room } = req.query;
+  console.log("Query room:", room);
+
   if (!room) return res.status(400).send("Room query is required");
 
-  // Convert room to number before querying (only if room is stored as number)
-  const messages = await Message.find({ room: Number(room) });
-
-  res.json(messages);
+  try {
+    const messages = await Message.find({ room }); // OR use Number(room) if stored as number
+    console.log(`Found ${messages.length} messages for room ${room}`);
+    res.json(messages);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).send("Server error");
+  }
 });
+
 
 
 io.on('connection', (socket) => {
@@ -81,9 +90,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat message', async ({ username, text, image, roomCode }) => {
-    const room = roomCode;
-    console.log('Saving message to room:', room); // ✅ See which room this message is going to
-  
+    const room = roomCode || 'global'; // fallback if roomCode is missing
     const newMessage = new Message({ username, text, image, room });
     await newMessage.save();
   
