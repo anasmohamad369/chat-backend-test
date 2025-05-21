@@ -30,16 +30,12 @@ const Message = mongoose.model('Message', messageSchema);
 
 // API to fetch message history
 app.get('/messages', async (req, res) => {
-  try {
-    const room = req.query.room || 'global';
-    const messages = await Message.find({ room }).sort({ timestamp: 1 }).limit(100);
-    res.json(messages);
-  } catch (err) {
-    console.error('Error fetching messages:', err);
-    res.status(500).json({ error: 'Could not fetch messages' });
-  }
-});
+  const { room } = req.query;
+  if (!room) return res.status(400).send("Room query is required");
 
+  const messages = await Message.find({ room });
+  res.json(messages);
+});
 
 io.on('connection', (socket) => {
   console.log('User connected');
@@ -51,7 +47,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat message', async ({ username, text, image, roomCode }) => {
-    const room = roomCode || 'global';
+    const room = roomCode;
     console.log('Saving message to room:', room); // ✅ See which room this message is going to
   
     const newMessage = new Message({ username, text, image, room });
