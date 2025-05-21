@@ -126,10 +126,4 @@ const startServer = (port) => {
 
 startServer(PORT)
 
-// Local
-// const socket = io("http://localhost:3001");
-
-// Deployed
-const socket = io("https://chat-backend-test-wbsa.onrender.com", {
-    transports: ["websocket"],
-});
+/
