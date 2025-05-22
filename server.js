@@ -53,10 +53,9 @@ const messageSchema = new mongoose.Schema({
   username: String,
   text: String,
   image: String,
-  room: String,
+  room: { type: String, required: true }, // ✅ ensure it's always a string
   timestamp: { type: Date, default: Date.now },
 });
-
 
 const Message = mongoose.model('Message', messageSchema);
 
@@ -64,19 +63,22 @@ const Message = mongoose.model('Message', messageSchema);
 // API to fetch message history
 app.get('/messages', async (req, res) => {
   const { room } = req.query;
-  console.log("Query room:", room);
 
-  if (!room) return res.status(400).send("Room query is required");
+  if (!room) {
+    return res.status(400).send("Room query is required");
+  }
+
+  console.log("Fetching messages for room:", room);
 
   try {
-    const messages = await Message.find({ room }); // OR use Number(room) if stored as number
-    console.log(`Found ${messages.length} messages for room ${room}`);
+    const messages = await Message.find({ room: String(room) });
     res.json(messages);
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).send("Server error");
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).send("Error fetching messages");
   }
 });
+
 
 
 
