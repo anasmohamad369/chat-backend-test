@@ -108,12 +108,16 @@ io.on('connection', (socket) => {
     console.log(`User joined room: ${room}`);
   });
 
-  socket.on('chat message', async ({ username, text, image, roomCode }) => {
-    const room = roomCode || 'global'; // fallback if roomCode is missing
+  socket.on("chat message", async ({ username, text, image, roomCode }) => {
+    console.log("🟡 Received message:", { username, text, image, roomCode });
+  
+    const room = roomCode || "global";
+    console.log("✅ Saving to room:", room);
+  
     const newMessage = new Message({ username, text, image, room });
     await newMessage.save();
   
-    io.to(room).emit('chat message', {
+    io.to(room).emit("chat message", {
       username,
       text,
       image,
