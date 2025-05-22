@@ -59,11 +59,9 @@ const messageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', messageSchema);
 
-
 // API to fetch message history
 app.get('/messages', async (req, res) => {
   const { room } = req.query;
-
   if (!room) {
     return res.status(400).send("Room query is required");
   }
@@ -78,9 +76,6 @@ app.get('/messages', async (req, res) => {
     res.status(500).send("Error fetching messages");
   }
 });
-
-
-
 
 // Add this before the /messages endpoint
 app.get('/test-db', async (req, res) => {
@@ -116,7 +111,12 @@ io.on('connection', (socket) => {
     const room = roomCode || "global";
     console.log("✅ Saving to room:", room);
   
-    const newMessage = new Message({ username, text, image, room });
+    const newMessage = new Message({ 
+      username, 
+      text, 
+      image, 
+      room  // Changed from roomCode to room to match schema
+    });
     await newMessage.save();
   
     io.to(room).emit("chat message", {
@@ -128,12 +128,10 @@ io.on('connection', (socket) => {
     });
   });
   
-
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
 });
-
 
 const PORT = process.env.PORT || 3001
 const startServer = (port) => {
