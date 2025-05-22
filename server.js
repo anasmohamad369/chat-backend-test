@@ -80,6 +80,25 @@ app.get('/messages', async (req, res) => {
 
 
 
+// Add this before the /messages endpoint
+app.get('/test-db', async (req, res) => {
+  try {
+    const db = mongoose.connection.db;
+    const collections = await db.listCollections().toArray();
+    const stats = await db.stats();
+    
+    res.json({
+      database: db.databaseName,
+      collections: collections.map(c => c.name),
+      stats: stats,
+      connectionState: mongoose.connection.readyState
+    });
+  } catch (error) {
+    console.error('Test DB error:', error);
+    res.status(500).send('Test DB error');
+  }
+});
+
 io.on('connection', (socket) => {
   console.log('User connected');
 
