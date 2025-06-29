@@ -1,7 +1,8 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
-const User = sequelize.define('User', {
+// Check if model already exists
+const User = sequelize.models.User || sequelize.define('User', {
     username: {
         type: DataTypes.STRING(30),
         allowNull: false,

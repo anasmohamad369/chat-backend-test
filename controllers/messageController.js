@@ -1,31 +1,86 @@
 const Message = require('../models/Message');
-const mongoose = require('mongoose');
+const User = require('../models/User');
+const { sequelize } = require('../config/database');
 
-exports.getMessages = async (req, res) => {
-  const { room } = req.query;
-  if (!room) return res.status(400).send("Room query is required");
-  try {
-    const messages = await Message.find({ room: String(room) });
-    res.json(messages);
-  } catch (err) {
-    console.error("Error:", err);
-    res.status(500).send("Error fetching messages");
-  }
+// Test database connections
+exports.testDb = async (req, res) => {
+    try {
+        console.log('🔍 Testing database connections...');
+        
+        // Test MySQL connection
+        await sequelize.authenticate();
+        console.log('✅ MySQL connection successful');
+        
+        // Get table information
+        const tables = await sequelize.showAllSchemas();
+        console.log('✅ MySQL tables:', tables);
+        
+        res.json({
+            success: true,
+            message: 'Database connected successfully',
+            database: 'MySQL',
+            status: 'connected'
+        });
+    } catch (error) {
+        console.error('Test DB error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Database test failed',
+            error: error.message
+        });
+    }
 };
 
-exports.testDb = async (req, res) => {
-  try {
-    const db = mongoose.connection.db;
-    const collections = await db.listCollections().toArray();
-    const stats = await db.stats();
-    res.json({
-      database: db.databaseName,
-      collections: collections.map(c => c.name),
-      stats: stats,
-      connectionState: mongoose.connection.readyState
-    });
-  } catch (error) {
-    console.error('Test DB error:', error);
-    res.status(500).send('Test DB error');
-  }
+// Get all messages
+exports.getMessages = async (req, res) => {
+    try {
+        const messages = await Message.findAll({
+            order: [['createdAt', 'DESC']]
+        });
+        
+        res.json({
+            success: true,
+            data: messages
+        });
+    } catch (error) {
+        console.error('Get messages error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to get messages',
+            error: error.message
+        });
+    }
+};
+
+// Create a new message
+exports.createMessage = async (req, res) => {
+    try {
+        const { content, senderId, receiverId, room } = req.body;
+        
+        if (!content || !senderId || !receiverId) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields: content, senderId, receiverId'
+            });
+        }
+
+        const message = await Message.create({
+            content,
+            senderId,
+            receiverId,
+            room: room || 'global'
+        });
+        
+        res.status(201).json({
+            success: true,
+            data: message
+        });
+    } catch (error) {
+        console.error('Create message error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to create message',
+            error: error.message
+        });
+    }
 };

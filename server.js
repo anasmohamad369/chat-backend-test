@@ -66,18 +66,26 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const newMessage = new Message({ username, text, image, room });
-    await newMessage.save();
+    try {
+      const newMessage = await Message.create({ 
+        content: text, 
+        senderId: username, 
+        receiverId: 'all',
+        room: room 
+      });
 
-    console.log("✅ Saved message to room:", room);
+      console.log("✅ Saved message to room:", room);
 
-    io.to(room).emit("chat message", {
-      username,
-      text,
-      image,
-      room,
-      timestamp: newMessage.timestamp,
-    });
+      io.to(room).emit("chat message", {
+        username,
+        text,
+        image,
+        room,
+        timestamp: newMessage.timestamp,
+      });
+    } catch (error) {
+      console.error("❌ Error saving message:", error);
+    }
   });
 
   socket.on('disconnect', () => {
