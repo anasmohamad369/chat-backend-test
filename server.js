@@ -1,8 +1,13 @@
+require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const { sequelize } = require('./config/database');
+const otpRoutes = require('./routes/otpRoutes');
+const userRoutes = require('./routes/userRoutes');
+const messageRoutes = require('./routes/messageRoutes');
+const Message = require('./models/Message');
 
 const app = express();
 const server = http.createServer(app);
@@ -11,9 +16,11 @@ const io = new Server(server, {
 });
 
 app.use(cors({
-  origin: "*", // OR better: use your frontend URL like "https://yourfrontend.vercel.app"
+  origin: "*",
   methods: ["GET", "POST"]
-}));app.use(express.json());
+}));
+
+app.use(express.json());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -30,73 +37,12 @@ app.get('/health', (req, res) => {
   }
 });
 
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+// Use routes
+app.use('/otp', otpRoutes);
+app.use('/users', userRoutes);
+app.use('/', messageRoutes);
 
-// MongoDB setup with proper error handling
-
-mongoose.connect(MONGODB_URI)
-.then(() => console.log('Connected to MongoDB'))
-.catch((err) => {
-  console.error('MongoDB connection error:', err);
-  process.exit(1);
-});
-
-// Handle MongoDB connection errors
-mongoose.connection.on('error', (err) => {
-  console.error('MongoDB connection error:', err);
-});
-
-mongoose.connection.on('disconnected', () => {
-  console.log('MongoDB disconnected');
-});
-
-const messageSchema = new mongoose.Schema({
-  username: String,
-  text: String,
-  image: String,
-  room: { type: String, required: true }, // ✅ ensure it's always a string
-  timestamp: { type: Date, default: Date.now },
-});
-
-const Message = mongoose.model('Message', messageSchema);
-
-// API to fetch message history
-app.get('/messages', async (req, res) => {
-  const { room } = req.query;
-  if (!room) {
-    return res.status(400).send("Room query is required");
-  }
-
-  console.log("Fetching messages for room:", room);
-
-  try {
-    const messages = await Message.find({ room: String(room) });
-    res.json(messages);
-  } catch (err) {
-    console.error("Error:", err);
-    res.status(500).send("Error fetching messages");
-  }
-});
-
-// Add this before the /messages endpoint
-app.get('/test-db', async (req, res) => {
-  try {
-    const db = mongoose.connection.db;
-    const collections = await db.listCollections().toArray();
-    const stats = await db.stats();
-    
-    res.json({
-      database: db.databaseName,
-      collections: collections.map(c => c.name),
-      stats: stats,
-      connectionState: mongoose.connection.readyState
-    });
-  } catch (error) {
-    console.error('Test DB error:', error);
-    res.status(500).send('Test DB error');
-  }
-});
-
+// Socket.io logic
 io.on('connection', (socket) => {
   console.log('User connected');
 
@@ -108,19 +54,18 @@ io.on('connection', (socket) => {
 
   socket.on("chat message", async ({ username, text, image, roomCode }) => {
     console.log("📨 Received:", { username, text, image, roomCode });
-  
+
     const room = roomCode || "global";
-  
     if (!room) {
       console.error("❌ NO ROOM PROVIDED — NOT SAVING MESSAGE");
       return;
     }
-  
+
     const newMessage = new Message({ username, text, image, room });
     await newMessage.save();
-  
+
     console.log("✅ Saved message to room:", room);
-  
+
     io.to(room).emit("chat message", {
       username,
       text,
@@ -129,28 +74,31 @@ io.on('connection', (socket) => {
       timestamp: newMessage.timestamp,
     });
   });
-  
-  
+
   socket.on('disconnect', () => {
     console.log('User disconnected');
   });
 });
 
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3001;
+
 const startServer = (port) => {
   server.listen(port, () => {
-    console.log(`Server running on port ${port}`)
+    console.log(`🚀 Server running on port ${port}`)
   }).on('error', (err) => {
     if (err.code === 'EADDRINUSE') {
-      console.log(`Port ${port} is busy, trying ${port + 1}...`)
+      console.log(`⚠️ Port ${port} is busy, trying ${port + 1}...`)
       startServer(port + 1)
     } else {
-      console.error('Server error:', err)
+      console.error('💥 Server error:', err)
     }
   })
 }
 
-startServer(PORT)
+// Sync Sequelize (MySQL) before starting the server
+sequelize.sync().then(() => {
+  startServer(PORT);
+});
 
 
 
