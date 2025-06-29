@@ -12,12 +12,17 @@ const Message = require('./models/Message');
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: "https://chat-front-end.vercel.app",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
 app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST"]
+  origin: ["https://chat-front-end.vercel.app"],
+  methods: ["GET", "POST"],
+  credentials: true
 }));
 
 app.use(express.json());
@@ -96,9 +101,19 @@ const startServer = (port) => {
 }
 
 // Sync Sequelize (MySQL) before starting the server
-sequelize.sync().then(() => {
+const startServerWithDatabase = async () => {
+  try {
+    await sequelize.sync();
+    console.log('✅ Database synced successfully');
+  } catch (error) {
+    console.error('❌ Database sync error:', error.message);
+    console.log('⚠️ Starting server without database sync');
+  }
+  
   startServer(PORT);
-});
+};
+
+startServerWithDatabase();
 
 
 
