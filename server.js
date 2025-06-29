@@ -30,8 +30,9 @@ app.get('/health', (req, res) => {
   }
 });
 
-// MongoDB setup with proper error handling
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://anasmohamad369:Anas-2004@cluster0.7zidp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0';
+
+// MongoDB setup with proper error handling
 
 mongoose.connect(MONGODB_URI)
 .then(() => console.log('Connected to MongoDB'))
@@ -106,18 +107,19 @@ io.on('connection', (socket) => {
   });
 
   socket.on("chat message", async ({ username, text, image, roomCode }) => {
-    console.log("🟡 Received message:", { username, text, image, roomCode });
+    console.log("📨 Received:", { username, text, image, roomCode });
   
     const room = roomCode || "global";
-    console.log("✅ Saving to room:", room);
   
-    const newMessage = new Message({ 
-      username, 
-      text, 
-      image, 
-      room  // Changed from roomCode to room to match schema
-    });
+    if (!room) {
+      console.error("❌ NO ROOM PROVIDED — NOT SAVING MESSAGE");
+      return;
+    }
+  
+    const newMessage = new Message({ username, text, image, room });
     await newMessage.save();
+  
+    console.log("✅ Saved message to room:", room);
   
     io.to(room).emit("chat message", {
       username,
@@ -127,6 +129,7 @@ io.on('connection', (socket) => {
       timestamp: newMessage.timestamp,
     });
   });
+  
   
   socket.on('disconnect', () => {
     console.log('User disconnected');
@@ -148,3 +151,6 @@ const startServer = (port) => {
 }
 
 startServer(PORT)
+
+
+
