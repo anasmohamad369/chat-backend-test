@@ -4,20 +4,26 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { sequelize } = require('./config/database');
+const { User, Message } = require('./models');
 const otpRoutes = require('./routes/otpRoutes');
 const userRoutes = require('./routes/userRoutes');
 const messageRoutes = require('./routes/messageRoutes');
-const Message = require('./models/Message');
+const emailVerificationRoutes = require('./routes/emailVerificationRoutes');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: '*' }
+  cors: {
+    origin: "https://chat-front-end.vercel.app",
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
 app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST"]
+  origin: ["https://chat-front-end.vercel.app"],
+  methods: ["GET", "POST"],
+  credentials: true
 }));
 
 app.use(express.json());
@@ -40,6 +46,7 @@ app.get('/health', (req, res) => {
 // Use routes
 app.use('/otp', otpRoutes);
 app.use('/users', userRoutes);
+app.use('/email-verification', emailVerificationRoutes);
 app.use('/', messageRoutes);
 
 // Socket.io logic
@@ -61,18 +68,33 @@ io.on('connection', (socket) => {
       return;
     }
 
-    const newMessage = new Message({ username, text, image, room });
-    await newMessage.save();
+    try {
+      // Find user by username
+      const user = await User.findOne({ where: { username } });
+      if (!user) {
+        console.error("❌ User not found:", username);
+        return;
+      }
 
-    console.log("✅ Saved message to room:", room);
+      const newMessage = await Message.create({ 
+        content: text, 
+        senderId: user.id, 
+        receiverId: null, // null for broadcast messages
+        room: room 
+      });
 
-    io.to(room).emit("chat message", {
-      username,
-      text,
-      image,
-      room,
-      timestamp: newMessage.timestamp,
-    });
+      console.log("✅ Saved message to room:", room);
+
+      io.to(room).emit("chat message", {
+        username,
+        text,
+        image,
+        room,
+        timestamp: newMessage.timestamp,
+      });
+    } catch (error) {
+      console.error("❌ Error saving message:", error);
+    }
   });
 
   socket.on('disconnect', () => {
@@ -96,9 +118,19 @@ const startServer = (port) => {
 }
 
 // Sync Sequelize (MySQL) before starting the server
-sequelize.sync().then(() => {
+const startServerWithDatabase = async () => {
+  try {
+    await sequelize.sync();
+    console.log('✅ Database synced successfully');
+  } catch (error) {
+    console.error('❌ Database sync error:', error.message);
+    console.log('⚠️ Starting server without database sync');
+  }
+  
   startServer(PORT);
-});
+};
+
+startServerWithDatabase();
 
 
 

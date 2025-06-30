@@ -1,11 +1,36 @@
-const mongoose = require('mongoose');
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
 
-const messageSchema = new mongoose.Schema({
-  username: String,
-  text: String,
-  image: String,
-  room: { type: String, required: true },
-  timestamp: { type: Date, default: Date.now },
-});
+// Check if model already exists
+const Message = sequelize.models.Message || sequelize.define('Message', {
+    content: {
+        type: DataTypes.TEXT,
+        allowNull: false
+    },
+    senderId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
+    },
+    receiverId: {
+        type: DataTypes.INTEGER,
+        allowNull: true, // Allow null for broadcast messages
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
+    },
+    room: {
+        type: DataTypes.STRING,
+        defaultValue: 'global'
+    },
+    timestamp: {
+        type: DataTypes.DATE,
+        defaultValue: DataTypes.NOW
+    }
+}, { timestamps: true });
 
-module.exports = mongoose.model('Message', messageSchema);
+module.exports = Message;

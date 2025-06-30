@@ -1,7 +1,8 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
-const User = sequelize.define('User', {
+// Check if model already exists
+const User = sequelize.models.User || sequelize.define('User', {
     username: {
         type: DataTypes.STRING(30),
         allowNull: false,
@@ -16,6 +17,18 @@ const User = sequelize.define('User', {
     password: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    emailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    verificationToken: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    verificationExpires: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, { timestamps: true });
 
