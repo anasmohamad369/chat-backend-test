@@ -21,7 +21,10 @@ const io = new Server(server, {
 });
 
 app.use(cors({
-  origin: ["https://chat-front-end.vercel.app"],
+  origin: [
+    "https://chat-front-end.vercel.app",
+    "http://localhost:3000"
+  ],
   methods: ["GET", "POST"],
   credentials: true
 }));
