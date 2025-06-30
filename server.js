@@ -12,13 +12,6 @@ const emailVerificationRoutes = require('./routes/emailVerificationRoutes');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "https://chat-front-end.vercel.app",
-    methods: ["GET", "POST"],
-    credentials: true
-  }
-});
 
 app.use(cors({
   origin: [
@@ -51,6 +44,17 @@ app.use('/otp', otpRoutes);
 app.use('/users', userRoutes);
 app.use('/email-verification', emailVerificationRoutes);
 app.use('/', messageRoutes);
+
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "https://chat-front-end.vercel.app",
+      "http://localhost:3000"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 // Socket.io logic
 io.on('connection', (socket) => {
