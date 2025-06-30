@@ -1,28 +1,9 @@
 const User = require('./User');
 const Message = require('./Message');
 
-// Define associations
-User.hasMany(Message, { 
-    foreignKey: 'senderId', 
-    as: 'sentMessages' 
-});
+// Sender association
+Message.belongsTo(User, { as: 'sender', foreignKey: 'senderId' });
+// Receiver association
+Message.belongsTo(User, { as: 'receiver', foreignKey: 'receiverId' });
 
-User.hasMany(Message, { 
-    foreignKey: 'receiverId', 
-    as: 'receivedMessages' 
-});
-
-Message.belongsTo(User, { 
-    foreignKey: 'senderId', 
-    as: 'sender' 
-});
-
-Message.belongsTo(User, { 
-    foreignKey: 'receiverId', 
-    as: 'receiver' 
-});
-
-module.exports = {
-    User,
-    Message
-}; 
+module.exports = { User, Message };
