@@ -3,6 +3,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const { sequelize } = require('../config/database');
+const crypto = require('crypto');
+const transporter = require('../config/mailer');
 
 exports.register = async (req, res) => {
     const { email, username, password } = req.body;
@@ -38,7 +40,47 @@ exports.register = async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.create({ email, username, password: hashedPassword });
+        
+        // Generate verification token
+        const verificationToken = crypto.randomBytes(32).toString('hex');
+        const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        const user = await User.create({ 
+            email, 
+            username, 
+            password: hashedPassword,
+            verificationToken,
+            verificationExpires,
+            emailVerified: false
+        });
+
+        // Send verification email
+        try {
+            const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${verificationToken}`;
+            
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: email,
+                subject: 'Welcome to Chat App - Verify Your Email',
+                html: `
+                    <h1>Welcome to Chat App!</h1>
+                    <p>Hi ${username},</p>
+                    <p>Thank you for registering! Please verify your email address by clicking the link below:</p>
+                    <a href="${verificationUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
+                        Verify Email
+                    </a>
+                    <p>Or copy this link: <a href="${verificationUrl}">${verificationUrl}</a></p>
+                    <p>This link will expire in 24 hours.</p>
+                    <p>If you didn't create an account, please ignore this email.</p>
+                `
+            });
+
+            console.log('✅ Verification email sent to:', email);
+
+        } catch (emailError) {
+            console.log('⚠️ Email not sent (email not configured), but user registered');
+            console.log('📧 Verification token for', email, ':', verificationToken);
+        }
 
         const token = jwt.sign(
             { id: user.id, email: user.email, username: user.username },
@@ -50,8 +92,8 @@ exports.register = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: 'User registered successfully',
-            user: { email, username },
+            message: 'User registered successfully. Please check your email to verify your account.',
+            user: { email, username, emailVerified: false },
             token
         });
     } catch (err) {

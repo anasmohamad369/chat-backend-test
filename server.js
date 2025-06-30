@@ -4,10 +4,11 @@ const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const { sequelize } = require('./config/database');
+const { User, Message } = require('./models');
 const otpRoutes = require('./routes/otpRoutes');
 const userRoutes = require('./routes/userRoutes');
 const messageRoutes = require('./routes/messageRoutes');
-const Message = require('./models/Message');
+const emailVerificationRoutes = require('./routes/emailVerificationRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -45,6 +46,7 @@ app.get('/health', (req, res) => {
 // Use routes
 app.use('/otp', otpRoutes);
 app.use('/users', userRoutes);
+app.use('/email-verification', emailVerificationRoutes);
 app.use('/', messageRoutes);
 
 // Socket.io logic
@@ -67,10 +69,17 @@ io.on('connection', (socket) => {
     }
 
     try {
+      // Find user by username
+      const user = await User.findOne({ where: { username } });
+      if (!user) {
+        console.error("❌ User not found:", username);
+        return;
+      }
+
       const newMessage = await Message.create({ 
         content: text, 
-        senderId: username, 
-        receiverId: 'all',
+        senderId: user.id, 
+        receiverId: null, // null for broadcast messages
         room: room 
       });
 

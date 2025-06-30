@@ -1,5 +1,4 @@
-const Message = require('../models/Message');
-const User = require('../models/User');
+const { User, Message } = require('../models');
 const { sequelize } = require('../config/database');
 
 // Test database connections
@@ -31,10 +30,22 @@ exports.testDb = async (req, res) => {
     }
 };
 
-// Get all messages
+// Get all messages with user information
 exports.getMessages = async (req, res) => {
     try {
         const messages = await Message.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'sender',
+                    attributes: ['id', 'username', 'email']
+                },
+                {
+                    model: User,
+                    as: 'receiver',
+                    attributes: ['id', 'username', 'email']
+                }
+            ],
             order: [['createdAt', 'DESC']]
         });
         
@@ -55,25 +66,63 @@ exports.getMessages = async (req, res) => {
 // Create a new message
 exports.createMessage = async (req, res) => {
     try {
-        const { content, senderId, receiverId, room } = req.body;
+        const { content, senderUsername, receiverUsername, room } = req.body;
         
-        if (!content || !senderId || !receiverId) {
+        if (!content || !senderUsername) {
             return res.status(400).json({
                 success: false,
-                message: 'Missing required fields: content, senderId, receiverId'
+                message: 'Missing required fields: content, senderUsername'
             });
+        }
+
+        // Find sender user
+        const sender = await User.findOne({ where: { username: senderUsername } });
+        if (!sender) {
+            return res.status(404).json({
+                success: false,
+                message: 'Sender user not found'
+            });
+        }
+
+        let receiverId = null;
+        if (receiverUsername) {
+            // Find receiver user
+            const receiver = await User.findOne({ where: { username: receiverUsername } });
+            if (!receiver) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Receiver user not found'
+                });
+            }
+            receiverId = receiver.id;
         }
 
         const message = await Message.create({
             content,
-            senderId,
+            senderId: sender.id,
             receiverId,
             room: room || 'global'
         });
         
+        // Get the created message with user information
+        const messageWithUsers = await Message.findByPk(message.id, {
+            include: [
+                {
+                    model: User,
+                    as: 'sender',
+                    attributes: ['id', 'username', 'email']
+                },
+                {
+                    model: User,
+                    as: 'receiver',
+                    attributes: ['id', 'username', 'email']
+                }
+            ]
+        });
+        
         res.status(201).json({
             success: true,
-            data: message
+            data: messageWithUsers
         });
     } catch (error) {
         console.error('Create message error:', error);

@@ -17,6 +17,18 @@ const User = sequelize.models.User || sequelize.define('User', {
     password: {
         type: DataTypes.STRING,
         allowNull: false
+    },
+    emailVerified: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
+    },
+    verificationToken: {
+        type: DataTypes.STRING,
+        allowNull: true
+    },
+    verificationExpires: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, { timestamps: true });
 

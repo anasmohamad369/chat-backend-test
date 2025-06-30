@@ -8,12 +8,20 @@ const Message = sequelize.models.Message || sequelize.define('Message', {
         allowNull: false
     },
     senderId: {
-        type: DataTypes.STRING,
-        allowNull: false
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
     },
     receiverId: {
-        type: DataTypes.STRING,
-        allowNull: false
+        type: DataTypes.INTEGER,
+        allowNull: true, // Allow null for broadcast messages
+        references: {
+            model: 'Users',
+            key: 'id'
+        }
     },
     room: {
         type: DataTypes.STRING,
